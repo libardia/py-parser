@@ -1,13 +1,11 @@
-################################################
-################################################
-###           A Parser for Things            ###
-###        Is a function from Strings        ###
-### To a list of pairs of Things and Strings ###
-################################################
-################################################
+import functionalparser.parsers as p
+import functionalparser.generators as g
+import functionalparser.combinators as c
+
 
 def main() -> None:
-    pass
+    print(f'{p.parse_int('test')=}')
+    print(f'{p.parse_int('896847 sdfglkj')=}')
 
 
 if __name__ == '__main__':
