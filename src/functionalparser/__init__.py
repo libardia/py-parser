@@ -143,7 +143,7 @@ def finalize(parser: ParserAny, *, allow_unparsed_remaining: bool = False) -> Ca
     def finalize_parser(in_str: str) -> Optional[Any]:
         result, rest = parser(in_str)
         if result is not None and len(rest) != 0 and not allow_unparsed_remaining:
-            raise ValueError(f'')
+            raise ValueError(f'Unparsed input remained in a finalized parser: {rest!r}')
         return result
 
     return finalize_parser
