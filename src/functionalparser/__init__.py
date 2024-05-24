@@ -9,9 +9,9 @@
 
 ####
 
-All parsers are always of the form:
+All parsers (except 'finalize', see docs) are always of the form:
 
-parser(input: str) -> tuple[Any | None, str]
+parser(input: str) -> tuple[Optional[Any], str]
 
 Where the first output is the parsed object, and the second output is any remaining unparsed output.
 
@@ -21,18 +21,18 @@ If parsing fails, the first output will be None, and the second output will be t
 """
 
 from enum import Enum
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 
-type ParseResultAny = tuple[Any | None, str]
+type ParseResultAny = tuple[Optional[Any], str]
 type ParserAny = Callable[[str], ParseResultAny]
 
-type ParseResultString = tuple[str | None, str]
+type ParseResultString = tuple[Optional[str], str]
 type ParserString = Callable[[str], ParseResultString]
 
-type ParseResultInt = tuple[int | None, str]
+type ParseResultInt = tuple[Optional[int], str]
 type ParserInt = Callable[[str], ParseResultInt]
 
-type ParseResultList = tuple[list | None, str]
+type ParseResultList = tuple[Optional[list], str]
 type ParserList = Callable[[str], ParseResultList]
 
 
@@ -133,6 +133,24 @@ def ignore_whitespace(parser: ParserAny,
     return ignore_whitespace_parser
 
 
+def finalize(parser: ParserAny, *, allow_unparsed_remaining: bool = False) -> Callable[[str], Optional[Any]]:
+    """Returns a parser that returns *ONLY* the result (or None if the input parser failed), and throws an error if any
+    unparsed input remains. Optionally, this error can be disabled.
+    :param parser: The parser to be acted on.
+    :param allow_unparsed_remaining: Keyword argument only. If True, no error is thrown if unparsed input remains after
+    the input parser has been executed. Defaults to False.
+    :returns: A parser whose only return value is the result of the input parser (or None if the input parser failed),
+    and possibly throws a ValueError if unparsed input remains."""
+
+    def finalize_parser(in_str: str) -> Optional[Any]:
+        result, rest = parser(in_str)
+        if result is not None and len(rest) != 0 and not allow_unparsed_remaining:
+            raise ValueError(f'')
+        return result
+
+    return finalize_parser
+
+
 # GENERATORS ===========================================================================================================
 
 def take_n(n: int) -> ParserString:
@@ -153,7 +171,7 @@ def get_in(character_set: str) -> ParserString:
     :param character_set: The list of characters that the output parser should consider.
     :returns: A new parser."""
 
-    def get_in_parser(in_str: str) -> tuple[str | None, str]:
+    def get_in_parser(in_str: str) -> ParseResultString:
         if len(in_str) > 0 and in_str[0] in character_set:
             return in_str[0], in_str[1:]
         return None, in_str
