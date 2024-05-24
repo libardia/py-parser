@@ -9,28 +9,29 @@
 
 ####
 
-All parsers (except 'finalize', see docs) are always of the form:
+All parsers (except ``finalize``, see docs) are always of the form:
 
-parser(input: str) -> tuple[Optional[Any], str]
+parser(input: str) -> tuple[bool, Optional[Any], str]
 
-Where the first output is the parsed object, and the second output is any remaining unparsed output.
+Where the first output is a boolean representing if the parser succeeded, the second is the parsed object, and the
+ third is any remaining unparsed output.
 
-If parsing fails, the first output will be None, and the second output will be the entire input.
+If parsing fails, the second output will be ``None``, and the third output will be the entire input.
 """
 
 from enum import Enum
 from typing import Callable, Any, Optional
 
-type ParseResultAny = tuple[Optional[Any], str]
+type ParseResultAny = tuple[bool, Optional[Any], str]
 type ParserAny = Callable[[str], ParseResultAny]
 
-type ParseResultString = tuple[Optional[str], str]
+type ParseResultString = tuple[bool, Optional[str], str]
 type ParserString = Callable[[str], ParseResultString]
 
-type ParseResultInt = tuple[Optional[int], str]
+type ParseResultInt = tuple[bool, Optional[int], str]
 type ParserInt = Callable[[str], ParseResultInt]
 
-type ParseResultList = tuple[Optional[list], str]
+type ParseResultList = tuple[bool, Optional[list], str]
 type ParserList = Callable[[str], ParseResultList]
 
 
@@ -48,40 +49,42 @@ def star(parser: ParserAny) -> ParserList:
     """Returns a parser that repeats the given parser until it fails, returning a list of the results of the inner
     parser. Effectively equivalent to '*' in regex, matching zero or more.
 
-    **NOTE:** Because it can return zero results, the new parser returns an empty list rather than None and therefore is
-    never considered to have failed.
+    **NOTE:** Because it can return zero results, the new parser is never considered to have failed.
     :param parser: The parser to be acted on.
     :returns: A new parser, whose result is a (possibly empty) list holding the same type as the result of the input
-    parser. Never has None as a result."""
+     parser. Always returns True as the status."""
 
     def star_parser(in_str: str) -> ParseResultList:
         results = []
-        result, rest = parser(in_str)
-        while result is not None:
+        success, result, rest = parser(in_str)
+        while success:
             results.append(result)
-            result, rest = parser(rest)
-        return results, rest
+            success, result, rest = parser(rest)
+        return True, results, rest
 
     return star_parser
+
+
+# def optional(parser: ParserAny) -> ParserAny
 
 
 def chain(*parsers: ParserAny) -> ParserList:
     """Returns a new parser that executes the given parsers one after another. If any one of the inner parsers fails,
     this parser completely fails.
     :param parsers: Any number of input parsers of any type. They will be executed in the order provided in the
-    arguments.
+     arguments.
     :returns: A new parser, whose result is a list holding the results of each input parser in order, or None if any of
-    the input parsers failed."""
+     the input parsers failed."""
 
     def chain_parser(in_str: str) -> ParseResultList:
         results = []
         rest = in_str
         for p in parsers:
-            result, rest = p(rest)
-            if result is None:
-                return None, in_str
+            success, result, rest = p(rest)
+            if not success:
+                return False, None, in_str
             results.append(result)
-        return results, rest
+        return True, results, rest
 
     return chain_parser
 
@@ -90,15 +93,15 @@ def transform(parser: ParserAny, transformer: Callable[[Any], Any]) -> ParserAny
     """Returns a parser that performs the given transformation on the result of another parser.
     :param parser: The parser to be acted on.
     :param transformer: A callable taking one argument and returning a value. This will be applied to the result of the
-    input parser.
+     input parser.
     :returns: A new parser, whose result is the result of the input parser after transformation. Fails when the input
-    parser fails."""
+     parser fails."""
 
     def transform_parser(in_str: str) -> ParseResultAny:
-        result, rest = parser(in_str)
-        if result is not None:
+        success, result, rest = parser(in_str)
+        if success:
             result = transformer(result)
-        return result, rest
+        return success, result, rest
 
     return transform_parser
 
@@ -106,44 +109,46 @@ def transform(parser: ParserAny, transformer: Callable[[Any], Any]) -> ParserAny
 def ignore_whitespace(parser: ParserAny,
                       ignore_whitespace_type: IgnoreWhitespaceType = IgnoreWhitespaceType.BEFORE) -> ParserAny:
     """Returns a parser that is identical to the given parser, except it consumes and discards all whitespace before,
-    after, or both (by default, only before). This is achieved using the all_whitespace parser.
+    after, or both (by default, only before). This is achieved using the ``all_whitespace`` parser.
     :param parser: The parser to be acted on.
     :param ignore_whitespace_type: An enum describing where whitespace should be ignored.
     :returns: A new parser, whose result is only the result of the input parser, with leading and/or trailing whitespace
-    excluded."""
+     excluded."""
 
     def ignore_whitespace_parser(in_str: str) -> ParseResultAny:
         rest = in_str
         if ignore_whitespace_type in (IgnoreWhitespaceType.BEFORE, IgnoreWhitespaceType.AROUND):
-            _, rest = all_whitespace(rest)
+            _, _, rest = all_whitespace(rest)
 
-        result, rest = parser(rest)
+        success, result, rest = parser(rest)
 
-        # If result is none, just end now
-        if result is None:
-            return None, in_str
+        # If it failed, just end now
+        if not success:
+            return False, None, in_str
 
         if ignore_whitespace_type in (IgnoreWhitespaceType.AFTER, IgnoreWhitespaceType.AROUND):
-            _, rest = all_whitespace(rest)
+            _, _, rest = all_whitespace(rest)
 
-        return result, rest
+        return True, result, rest
 
     return ignore_whitespace_parser
 
 
 def finalize(parser: ParserAny, *, allow_unparsed_remaining: bool = False) -> Callable[[str], Optional[Any]]:
-    """Returns a parser that returns *ONLY* the result (or None if the input parser failed), and throws an error if any
-    unparsed input remains. Optionally, this error can be disabled.
+    """Returns a parser that returns *ONLY* the result and throws an error if either the parse failed or any unparsed
+    input remains. Optionally, unparsed input may be allowed.
     :param parser: The parser to be acted on.
     :param allow_unparsed_remaining: Keyword argument only. If True, no error is thrown if unparsed input remains after
-    the input parser has been executed. Defaults to False.
-    :returns: A parser whose only return value is the result of the input parser (or None if the input parser failed),
-    and possibly throws a ValueError if unparsed input remains."""
+     the input parser has been executed. Defaults to False.
+    :returns: A parser whose only return value is the result of the input parser, and possibly throws a ValueError if
+     the input cannot be parsed or if unparsed input remains."""
 
     def finalize_parser(in_str: str) -> Optional[Any]:
-        result, rest = parser(in_str)
-        if result is not None and len(rest) != 0 and not allow_unparsed_remaining:
-            raise ValueError(f'Unparsed input remained in a finalized parser: {rest!r}')
+        success, result, rest = parser(in_str)
+        if not success:
+            raise ValueError(f'Input could not be parsed: {in_str!r}')
+        if len(rest) != 0 and not allow_unparsed_remaining:
+            raise ValueError(f'Unparsed input remained in a finalized parser: result={result!r}, rest={rest!r}')
         return result
 
     return finalize_parser
@@ -158,8 +163,8 @@ def take_n(n: int) -> ParserString:
 
     def take_n_parser(in_str: str) -> ParseResultString:
         if len(in_str) >= n:
-            return in_str[:n], in_str[n:]
-        return None, in_str
+            return True, in_str[:n], in_str[n:]
+        return False, None, in_str
 
     return take_n_parser
 
@@ -171,8 +176,8 @@ def get_in(character_set: str) -> ParserString:
 
     def get_in_parser(in_str: str) -> ParseResultString:
         if len(in_str) > 0 and in_str[0] in character_set:
-            return in_str[0], in_str[1:]
-        return None, in_str
+            return True, in_str[0], in_str[1:]
+        return False, None, in_str
 
     return get_in_parser
 
@@ -183,35 +188,39 @@ def get_in(character_set: str) -> ParserString:
 def digit(in_str: str) -> ParseResultString:
     """Gets the first character of the string if numeric.
     :param in_str: The input string being parsed.
-    :returns: A tuple whose first element is the result of the parser, and whose second input is the remaining unparsed
-    input. If this parser fails, its first element will be None and its second element will be the entire input."""
+    :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
+     result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
+     element will be ``None`` and its third element will be the entire input."""
     return get_in('0123456789')(in_str)
 
 
 def single_whitespace(in_str: str) -> ParseResultString:
     """Gets the first character of the string if it is whitespace.
     :param in_str: The input string being parsed.
-    :returns: A tuple whose first element is the result of the parser, and whose second input is the remaining unparsed
-    input. If this parser fails, its first element will be None and its second element will be the entire input."""
+    :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
+     result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
+     element will be ``None`` and its third element will be the entire input."""
     if len(in_str) > 0 and in_str[0].isspace():
-        return in_str[0], in_str[1:]
-    return None, in_str
+        return True, in_str[0], in_str[1:]
+    return False, None, in_str
 
 
 def all_whitespace(in_str: str) -> ParseResultString:
     """Gets as much whitespace as possible from the beginning of the string.
     :param in_str: The input string being parsed.
-    :returns: A tuple whose first element is the result of the parser, and whose second input is the remaining unparsed
-    input. If this parser fails, its first element will be None and its second element will be the entire input."""
+    :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
+     result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
+     element will be ``None`` and its third element will be the entire input."""
     return star(single_whitespace)(in_str)
 
 
 def parse_int(in_str: str) -> ParseResultInt:
     """Parses an integer from the beginning of the input.
     :param in_str: The input string being parsed.
-    :returns: A tuple whose first element is the result of the parser, and whose second input is the remaining unparsed
-    input. If this parser fails, its first element will be None and its second element will be the entire input."""
-    digits, rest = star(digit)(in_str)
+    :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
+     result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
+     element will be ``None`` and its third element will be the entire input."""
+    _, digits, rest = star(digit)(in_str)
     if len(digits) > 0:
-        return int(''.join(digits)), rest
-    return None, in_str
+        return True, int(''.join(digits)), rest
+    return False, None, in_str
