@@ -1,12 +1,17 @@
-import functionalparser.parsers as p
-import functionalparser.generators as g
-import functionalparser.combinators as c
+from functionalparser.combinators import chain, transform
+from functionalparser.parsers import parse_int, all_whitespace
 
 
 def main() -> None:
-    print(f'{p.parse_int('test')=}')
-    print(f'{p.parse_int('896847 sdfglkj')=}')
-    c.chain(p.parse_int, p.parse_int)
+    print(f'{parse_int('test')=}')
+    print(f'{parse_int('896847 stuff')=}')
+    two_ints = transform(
+        chain(
+            parse_int, all_whitespace, parse_int
+        ),
+        lambda x: [x[i] for i in (0, 2)]
+    )
+    print(f'{two_ints('00034 230')=}')
 
 
 if __name__ == '__main__':
