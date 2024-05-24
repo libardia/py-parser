@@ -42,10 +42,9 @@ def all_whitespace(in_str: str) -> ParseResultString:
 
 
 def parse_int(in_str: str) -> ParseResultInt:
-    """Parses the largest integer possible from the beginning
-    of the input. Specifically, takes as many numeric characters
-    as possible and converts that to an int."""
+    """Parses the largest integer possible from the beginning of the input. Specifically, takes as many numeric
+    characters as possible and converts that to an int."""
     digits, rest = star(digit)(in_str)
-    if digits is not None:
+    if len(digits) > 0:
         return int(''.join(digits)), rest
     return None, in_str
