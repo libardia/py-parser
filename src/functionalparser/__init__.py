@@ -196,6 +196,7 @@ def get(prefix: str) -> ParserString:
     """Returns a parser that extracts the given string from the beginning of the input, if present.
     :param prefix: The string to search for.
     :returns: A parser that extracts the given string from the beginning of the input, if present."""
+
     def get_parser(in_str: str) -> ParseResultString:
         if in_str.startswith(prefix):
             return True, prefix, in_str[len(prefix):]
@@ -242,6 +243,7 @@ def parse_int(in_str: str) -> ParseResultInt:
     :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
      result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
      element will be ``None`` and its third element will be the entire input."""
+
     def int_transformer(parse_result: list) -> Optional[int]:
         sign, digits = parse_result
         collected = ''
