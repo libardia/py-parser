@@ -11,7 +11,7 @@ def main() -> None:
     two_ints = finalize(chain(
         iw(parse_int), iw_around(parse_int)
     ))
-    print(f'{two_ints(' 00034 230 ')=}')
+    print(f'{two_ints(' -00034 230 ')=}')
 
 
 if __name__ == '__main__':

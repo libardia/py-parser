@@ -65,7 +65,17 @@ def star(parser: ParserAny) -> ParserList:
     return star_parser
 
 
-# def optional(parser: ParserAny) -> ParserAny
+def optional(parser: ParserAny) -> ParserAny:
+    """Returns a new parser that is identical to the input parser, but is always considered to have succeeded.
+    :param parser: The parser to be acted on.
+    :returns: A new parser, which always returns ``True`` as its first value, but otherwise is identical to the input
+     parser."""
+
+    def optional_parser(in_str: str) -> ParseResultAny:
+        _, result, rest = parser(in_str)
+        return True, result, rest
+
+    return optional_parser
 
 
 def chain(*parsers: ParserAny) -> ParserList:
@@ -73,8 +83,8 @@ def chain(*parsers: ParserAny) -> ParserList:
     this parser completely fails.
     :param parsers: Any number of input parsers of any type. They will be executed in the order provided in the
      arguments.
-    :returns: A new parser, whose result is a list holding the results of each input parser in order, or None if any of
-     the input parsers failed."""
+    :returns: A new parser, whose result is a list holding the results of each input parser in order, or ``None`` if
+     any of the input parsers failed."""
 
     def chain_parser(in_str: str) -> ParseResultList:
         results = []
@@ -138,10 +148,10 @@ def finalize(parser: ParserAny, *, allow_unparsed_remaining: bool = False) -> Ca
     """Returns a parser that returns *ONLY* the result and throws an error if either the parse failed or any unparsed
     input remains. Optionally, unparsed input may be allowed.
     :param parser: The parser to be acted on.
-    :param allow_unparsed_remaining: Keyword argument only. If True, no error is thrown if unparsed input remains after
-     the input parser has been executed. Defaults to False.
-    :returns: A parser whose only return value is the result of the input parser, and possibly throws a ValueError if
-     the input cannot be parsed or if unparsed input remains."""
+    :param allow_unparsed_remaining: Keyword argument only. If ``True``, no error is thrown if unparsed input remains
+     after the input parser has been executed. Defaults to ``False``.
+    :returns: A parser whose only return value is the result of the input parser, and possibly throws a ``ValueError``
+     if the input cannot be parsed or if unparsed input remains."""
 
     def finalize_parser(in_str: str) -> Optional[Any]:
         success, result, rest = parser(in_str)
@@ -169,7 +179,7 @@ def take_n(n: int) -> ParserString:
     return take_n_parser
 
 
-def get_in(character_set: str) -> ParserString:
+def get_char_in(character_set: str) -> ParserString:
     """Returns a parser that takes the first character, if it appears in the given string.
     :param character_set: The list of characters that the output parser should consider.
     :returns: A new parser."""
@@ -182,6 +192,18 @@ def get_in(character_set: str) -> ParserString:
     return get_in_parser
 
 
+def get(prefix: str) -> ParserString:
+    """Returns a parser that extracts the given string from the beginning of the input, if present.
+    :param prefix: The string to search for.
+    :returns: A parser that extracts the given string from the beginning of the input, if present."""
+    def get_parser(in_str: str) -> ParseResultString:
+        if in_str.startswith(prefix):
+            return True, prefix, in_str[len(prefix):]
+        return False, None, in_str
+
+    return get_parser
+
+
 # PARSERS ==============================================================================================================
 
 
@@ -191,7 +213,7 @@ def digit(in_str: str) -> ParseResultString:
     :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
      result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
      element will be ``None`` and its third element will be the entire input."""
-    return get_in('0123456789')(in_str)
+    return get_char_in('0123456789')(in_str)
 
 
 def single_whitespace(in_str: str) -> ParseResultString:
@@ -206,11 +228,11 @@ def single_whitespace(in_str: str) -> ParseResultString:
 
 
 def all_whitespace(in_str: str) -> ParseResultString:
-    """Gets as much whitespace as possible from the beginning of the string.
+    """Gets as much whitespace as possible (including none) from the beginning of the string.
     :param in_str: The input string being parsed.
-    :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
-     result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
-     element will be ``None`` and its third element will be the entire input."""
+    :returns: A tuple whose first element is a boolean representing if the parser succeeded (which is always ``True`` in
+     this case), the second element is the result of the parser, and the third element is the
+     remaining unparsed input."""
     return star(single_whitespace)(in_str)
 
 
@@ -220,7 +242,21 @@ def parse_int(in_str: str) -> ParseResultInt:
     :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
      result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
      element will be ``None`` and its third element will be the entire input."""
-    _, digits, rest = star(digit)(in_str)
-    if len(digits) > 0:
-        return True, int(''.join(digits)), rest
-    return False, None, in_str
+    def int_transformer(parse_result: list) -> Optional[int]:
+        sign, digits = parse_result
+        collected = ''
+        if sign == '-':
+            collected += sign
+        collected += ''.join(digits)
+        try:
+            return int(collected)
+        except ValueError:
+            return None
+
+    int_parser = transform(
+        chain(
+            optional(get('-')), star(digit)
+        ),
+        int_transformer
+    )
+    return int_parser(in_str)
