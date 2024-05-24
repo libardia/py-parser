@@ -1,4 +1,14 @@
 """
+*A Parser for Things*
+
+*Is a function from Strings*
+
+*To a list of pairs of Things and Strings*
+
+*(we're just doing one tho ok? ok)*
+
+###############################################
+
 All parsers are always of the form:
 
 parser(input: str) -> tuple[Any | None, str]
@@ -11,16 +21,6 @@ If parsing fails, the first output will be None, and the second output will be t
 from functionalparser.combinators import star
 from functionalparser.generators import get_in
 from functionalparser.parsetypes import ParseResultString, ParseResultInt
-
-
-##################################################
-##################################################
-###            A Parser for Things             ###
-###         Is a function from Strings         ###
-###  To a list of pairs of Things and Strings  ###
-###     (we're just doing one tho ok? ok)      ###
-##################################################
-##################################################
 
 
 def digit(in_str: str) -> ParseResultString:
