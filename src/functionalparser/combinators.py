@@ -1,14 +1,14 @@
-from typing import Callable, Any
+from functionalparser.parsetypes import ParserAny, ParseResultList, ParserListAny
 
 
-def star(parser: Callable) -> Callable:
-    def star_parser(input: str) -> tuple[list[Any] | None, str]:
+def star(parser: ParserAny) -> ParserListAny:
+    def star_parser(in_str: str) -> ParseResultList:
         results = []
-        result, rest = parser(input)
+        result, rest = parser(in_str)
         while result is not None:
             results.append(result)
             result, rest = parser(rest)
         if results:
             return results, rest
-        return None, input
+        return None, in_str
     return star_parser
