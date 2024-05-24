@@ -1,15 +1,11 @@
-from functionalparser.combinators import chain, transform
-from functionalparser.parsers import parse_int, all_whitespace
+from functionalparser import parse_int, chain, ignore_whitespace as iw
 
 
 def main() -> None:
     print(f'{parse_int('test')=}')
     print(f'{parse_int('896847 stuff')=}')
-    two_ints = transform(
-        chain(
-            parse_int, all_whitespace, parse_int
-        ),
-        lambda x: [x[i] for i in (0, 2)]
+    two_ints = chain(
+        iw(parse_int), iw(parse_int)
     )
     print(f'{two_ints('00034 230')=}')
 
