@@ -16,8 +16,6 @@ parser(input: str) -> tuple[Optional[Any], str]
 Where the first output is the parsed object, and the second output is any remaining unparsed output.
 
 If parsing fails, the first output will be None, and the second output will be the entire input.
-
-
 """
 
 from enum import Enum
