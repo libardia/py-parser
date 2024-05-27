@@ -1,7 +1,6 @@
 from functools import partial
 
-from functionalparser import parse_int, chain, ignore_whitespace as iw, finalize, IgnoreWhitespaceType
-
+from functionalparser import parse_int, chain, ignore_whitespace as iw, finalize, IgnoreWhitespaceType, all_whitespace
 
 def main() -> None:
     iw_around = partial(iw, ignore_whitespace_type=IgnoreWhitespaceType.AROUND)
@@ -12,6 +11,7 @@ def main() -> None:
         iw(parse_int), iw_around(parse_int)
     ))
     print(f'{two_ints(' -00034 230 ')=}')
+    print(f'{all_whitespace(' \t\n  \t what?')}')
 
 
 if __name__ == '__main__':
