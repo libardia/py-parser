@@ -47,7 +47,7 @@ class TestCombinators(TestCase):
             (tp_get('ab'), 'ababbbb', (True, ['ab', 'ab'], 'bbb')),
         ]
         for parser, in_str, expected in expectations:
-            with self.subTest(f'Testing multiple conditions for {inspect.currentframe().f_code.co_name}',
+            with self.subTest(star.__name__,
                               parser=parser, in_str=in_str, expected=expected):
                 self.assertEqual(star(parser)(in_str), expected)
 
@@ -61,7 +61,7 @@ class TestCombinators(TestCase):
             (tp_get('a'), 'ba', (True, None, 'ba')),
         ]
         for parser, in_str, expected in expectations:
-            with self.subTest(f'Testing multiple conditions for {inspect.currentframe().f_code.co_name}',
+            with self.subTest(optional.__name__,
                               parser=parser, in_str=in_str, expected=expected):
                 self.assertEqual(optional(parser)(in_str), expected)
 
@@ -77,10 +77,10 @@ class TestCombinators(TestCase):
             ([tp_get('a'), tp_get('b'), tp_get('c')], 'ab_.', (False, None, 'ab_.')),
         ]
         for parsers, in_str, expected in expectations:
-            with self.subTest(f'Testing multiple conditions for {inspect.currentframe().f_code.co_name}',
+            with self.subTest(chain.__name__,
                               parsers=parsers, in_str=in_str, expected=expected):
                 self.assertEqual(chain(*parsers)(in_str), expected)
-        with self.subTest('Ensure ValueError is raised when called with no arguments'):
+        with self.subTest('when called with no args, ValueError is raised'):
             self.assertRaises(ValueError, chain)
 
     def test_transform(self):
@@ -94,10 +94,10 @@ class TestCombinators(TestCase):
             (tp_take, lambda x: list(range(int(x))), '5tests', (True, [0, 1, 2, 3, 4], 'tests')),
         ]
         for parser, transformer, in_str, expected in expectations:
-            with self.subTest(f'Testing multiple conditions for {inspect.currentframe().f_code.co_name}',
+            with self.subTest(transform.__name__,
                               parser=parser, transformer=transformer, in_str=in_str, expected=expected):
                 self.assertEqual(transform(parser, transformer)(in_str), expected)
-        with self.subTest('Fails and does not propagate error when transformer raises an error'):
+        with self.subTest('when transformer raises error, fails without error'):
             in_str = 'test'
             self.assertEqual((False, None, in_str), transform(tp_take, lambda x: int(x))(in_str))
 
@@ -114,7 +114,7 @@ class TestCombinators(TestCase):
             (ignore_whitespace(tp_get(infix)), full, (True, infix, wa)),
         ]
         for parser, in_str, expected in expectations:
-            with self.subTest(f'Testing multiple conditions for {inspect.currentframe().f_code.co_name}',
+            with self.subTest(ignore_whitespace.__name__,
                               parser=parser, in_str=in_str, expected=expected):
                 self.assertEqual(parser(in_str), expected)
 
@@ -132,7 +132,7 @@ class TestCombinators(TestCase):
             (tp_get('test'), False, 'bad', None, ValueError),
         ]
         for parser, allow_remaining, in_str, expected, exception in expectations:
-            with self.subTest(f'Testing multiple conditions for {inspect.currentframe().f_code.co_name}',
+            with self.subTest(finalize.__name__,
                               parser=parser, allow_remaining=allow_remaining, in_str=in_str, expected=expected,
                               exception=exception):
                 if exception:
