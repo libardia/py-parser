@@ -237,7 +237,7 @@ def all_whitespace(in_str: str) -> ParseResultString:
     :returns: A tuple whose first element is a boolean representing if the parser succeeded (which is always ``True`` in
      this case), the second element is the result of the parser, and the third element is the
      remaining unparsed input."""
-    return star(single_whitespace)(in_str)
+    return transform(star(single_whitespace), lambda x: ''.join(x))(in_str)
 
 
 def parse_int(in_str: str) -> ParseResultInt:
