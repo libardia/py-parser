@@ -22,17 +22,20 @@ If parsing fails, the second output will be ``None``, and the third output will 
 from enum import Enum
 from typing import Callable, Any, Optional
 
-type ParseResultAny = tuple[bool, Optional[Any], str]
 type ParserAny = Callable[[str], ParseResultAny]
+type ParseResultAny = tuple[bool, Optional[Any], str]
 
-type ParseResultString = tuple[bool, Optional[str], str]
 type ParserString = Callable[[str], ParseResultString]
+type ParseResultString = tuple[bool, Optional[str], str]
 
-type ParseResultInt = tuple[bool, Optional[int], str]
 type ParserInt = Callable[[str], ParseResultInt]
+type ParseResultInt = tuple[bool, Optional[int], str]
 
-type ParseResultList = tuple[bool, Optional[list], str]
 type ParserList = Callable[[str], ParseResultList]
+type ParseResultList = tuple[bool, Optional[list], str]
+
+type ParserFinalized = Callable[[str], Optional[Any]]
+type ParseResultFinalized = Optional[Any]
 
 
 class IgnoreWhitespaceType(Enum):
@@ -68,7 +71,7 @@ def star(parser: ParserAny) -> ParserList:
 def optional(parser: ParserAny) -> ParserAny:
     """Returns a new parser that is identical to the input parser, but is always considered to have succeeded.
     :param parser: The parser to be acted on.
-    :returns: A new parser, which always returns ``True`` as its first value, but otherwise is identical to the input
+    :returns: A new parser, which always returns ``True`` as its success status, but otherwise is identical to the input
      parser."""
 
     def optional_parser(in_str: str) -> ParseResultAny:
@@ -144,7 +147,7 @@ def ignore_whitespace(parser: ParserAny,
     return ignore_whitespace_parser
 
 
-def finalize(parser: ParserAny, *, allow_unparsed_remaining: bool = False) -> Callable[[str], Optional[Any]]:
+def finalize(parser: ParserAny, *, allow_unparsed_remaining: bool = False) -> ParserFinalized:
     """Returns a parser that returns *ONLY* the result and throws an error if either the parse failed or any unparsed
     input remains. Optionally, unparsed input may be allowed.
     :param parser: The parser to be acted on.
