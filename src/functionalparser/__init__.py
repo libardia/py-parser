@@ -83,11 +83,13 @@ def optional(parser: ParserAny) -> ParserAny:
 
 def chain(*parsers: ParserAny) -> ParserList:
     """Returns a new parser that executes the given parsers one after another. If any one of the inner parsers fails,
-    this parser completely fails.
+    this parser completely fails. Throws ``ValueError`` if no parsers are passed.
     :param parsers: Any number of input parsers of any type. They will be executed in the order provided in the
      arguments.
     :returns: A new parser, whose result is a list holding the results of each input parser in order, or ``None`` if
      any of the input parsers failed."""
+    if len(parsers) == 0:
+        raise ValueError('Must pass at least one parser to chain.')
 
     def chain_parser(in_str: str) -> ParseResultList:
         results = []
@@ -113,7 +115,10 @@ def transform(parser: ParserAny, transformer: Callable[[Any], Any]) -> ParserAny
     def transform_parser(in_str: str) -> ParseResultAny:
         success, result, rest = parser(in_str)
         if success:
-            result = transformer(result)
+            try:
+                result = transformer(result)
+            except Exception:
+                return False, None, in_str
         return success, result, rest
 
     return transform_parser
