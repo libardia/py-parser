@@ -2,6 +2,7 @@ from functools import partial
 
 from functionalparser import parse_int, chain, ignore_whitespace as iw, finalize, IgnoreWhitespaceType, all_whitespace
 
+
 def main() -> None:
     iw_around = partial(iw, ignore_whitespace_type=IgnoreWhitespaceType.AROUND)
 
