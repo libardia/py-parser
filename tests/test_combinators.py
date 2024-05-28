@@ -138,3 +138,28 @@ class TestCombinators(TestCase):
                     self.assertRaises(exception, finalize(parser, allow_unparsed_remaining=allow_remaining), in_str)
                 else:
                     self.assertEqual(finalize(parser, allow_unparsed_remaining=allow_remaining)(in_str), expected)
+
+    def test_any_of(self):
+        expectations: list[tuple[list[ParserAny], Optional[bool], str, ParseResultAny]] = [
+            ([tp_get('test'), tp_int, tp_take], True, 'test and more', (True, 'test', ' and more')),
+            ([tp_get('test'), tp_int, tp_take], True, '5 and more', (True, 5, ' and more')),
+            ([tp_get('test'), tp_int, tp_take], True, '? and more', (True, '?', ' and more')),
+            ([tp_get('test'), tp_int, tp_get('other')], True, '? and more', (False, None, '? and more')),
+            ([tp_get('test'), tp_int, tp_get('other')], False, '? and more', (True, None, '? and more')),
+            ([tp_get('test')], True, 'test and more', (True, 'test', ' and more')),
+            ([tp_get('test')], False, 'test and more', (True, 'test', ' and more')),
+            ([tp_get('test')], True, '? and more', (False, None, '? and more')),
+            ([tp_get('test')], False, '? and more', (True, None, '? and more')),
+        ]
+        for parsers, at_least_one, in_str, expected in expectations:
+            with self.subTest(any_of.__name__,
+                              parsers=parsers, at_least_one=at_least_one, in_str=in_str, expected=expected):
+                if at_least_one is not None:
+                    self.assertEqual(any_of(*parsers, at_least_one=at_least_one)(in_str), expected)
+                else:
+                    self.assertEqual(any_of(*parsers)(in_str), expected)
+        with self.subTest('when called with no args, ValueError is raised'):
+            self.assertRaises(ValueError, any_of)
+        for at_least_one in (True, False):
+            with self.subTest(f'when called with no parsers and at_least_one={at_least_one}, ValueError is raised'):
+                self.assertRaises(ValueError, any_of, at_least_one=at_least_one)

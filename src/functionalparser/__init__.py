@@ -89,7 +89,7 @@ def chain(*parsers: ParserAny) -> ParserList:
     :returns: A new parser, whose result is a list holding the results of each input parser in order, or ``None`` if
      any of the input parsers failed."""
     if len(parsers) == 0:
-        raise ValueError('Must pass at least one parser to chain.')
+        raise ValueError(f'Must pass at least one parser to {chain.__name__}.')
 
     def chain_parser(in_str: str) -> ParseResultList:
         results = []
@@ -102,6 +102,26 @@ def chain(*parsers: ParserAny) -> ParserList:
         return True, results, rest
 
     return chain_parser
+
+
+def any_of(*parsers: ParserAny, at_least_one: bool = True):
+    """Returns a parser that executes each given parser in order, and returns the results from the first one that
+    succeeds. If none succeed, this parser fails, unless ``at_least_one`` is set to ``False``.
+    :param parsers: Any number of input parsers of any type. They will be executed in the order provided in the
+     arguments.
+    :param at_least_one: If ``True``, the returned parser fails if none of the input parsers succeed. If ``False``, it
+     will succeed anyway. Defaults to ``True``."""
+    if len(parsers) == 0:
+        raise ValueError(f'Must pass at least one parser to {any_of.__name__}.')
+
+    def first_of_parser(in_str: str) -> ParseResultAny:
+        for parser in parsers:
+            success, result, rest = parser(in_str)
+            if success:
+                return success, result, rest
+        return not at_least_one, None, in_str
+
+    return first_of_parser
 
 
 def transform(parser: ParserAny, transformer: Callable[[Any], Any]) -> ParserAny:
