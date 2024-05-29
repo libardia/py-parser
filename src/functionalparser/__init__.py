@@ -34,7 +34,10 @@ type ParseResultInt = tuple[bool, Optional[int], str]
 type ParserList = Callable[[str], ParseResultList]
 type ParseResultList = tuple[bool, Optional[list], str]
 
-type ParserFinalized = Callable[[str], Optional[Any]]
+type ParserNone = Callable[[str], ParseResultNone]
+type ParseResultNone = tuple[bool, None, str]
+
+type ParserFinalized = Callable[[str], ParseResultFinalized]
 type ParseResultFinalized = Optional[Any]
 
 
@@ -81,11 +84,13 @@ def optional(parser: ParserAny) -> ParserAny:
     return optional_parser
 
 
-def chain(*parsers: ParserAny) -> ParserList:
+def chain(*parsers: ParserAny, skip_none_result=True) -> ParserList:
     """Returns a new parser that executes the given parsers one after another. If any one of the inner parsers fails,
     this parser completely fails. Throws ``ValueError`` if no parsers are passed.
     :param parsers: Any number of input parsers of any type. They will be executed in the order provided in the
      arguments.
+    :param skip_none_result: If ``True``, when a parser succeeds but returns ``None``, that won't be included in the
+     result list of chain. Defaults to ``True``.
     :returns: A new parser, whose result is a list holding the results of each input parser in order, or ``None`` if
      any of the input parsers failed."""
     if len(parsers) == 0:
@@ -98,7 +103,8 @@ def chain(*parsers: ParserAny) -> ParserList:
             success, result, rest = p(rest)
             if not success:
                 return False, None, in_str
-            results.append(result)
+            if result is not None or not skip_none_result:
+                results.append(result)
         return True, results, rest
 
     return chain_parser
@@ -114,14 +120,14 @@ def any_of(*parsers: ParserAny, at_least_one: bool = True):
     if len(parsers) == 0:
         raise ValueError(f'Must pass at least one parser to {any_of.__name__}.')
 
-    def first_of_parser(in_str: str) -> ParseResultAny:
+    def any_of_parser(in_str: str) -> ParseResultAny:
         for parser in parsers:
             success, result, rest = parser(in_str)
             if success:
                 return success, result, rest
         return not at_least_one, None, in_str
 
-    return first_of_parser
+    return any_of_parser
 
 
 def transform(parser: ParserAny, transformer: Callable[[Any], Any]) -> ParserAny:
@@ -170,6 +176,18 @@ def ignore_whitespace(parser: ParserAny,
         return True, result, rest
 
     return ignore_whitespace_parser
+
+
+def fails(parser: ParserAny) -> ParserNone:
+    """Returns a parser that succeeds if the input parser fails. As a consequence, this parser always returns no result
+    and the entire input string.
+    :param parser: The parser to be acted on.
+    :returns: A parser that returns nothing, but succeeds when the input parser fails, and vice-versa."""
+    def fails_parser(in_str: str) -> ParseResultNone:
+        success, _, _ = parser(in_str)
+        return not success, None, in_str
+
+    return fails_parser
 
 
 def finalize(parser: ParserAny, *, allow_unparsed_remaining: bool = False) -> ParserFinalized:
@@ -263,6 +281,14 @@ def all_whitespace(in_str: str) -> ParseResultString:
      this case), the second element is the result of the parser, and the third element is the
      remaining unparsed input."""
     return transform(star(single_whitespace), lambda x: ''.join(x))(in_str)
+
+
+def eof(in_str: str) -> ParseResultNone:
+    """"Parses" EOF. That is, succeeds if the input string is empty. Never returns a result.
+    :param in_str: The input string being parsed.
+    :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is
+     ``None``, and the third element is the unparsed input."""
+    return in_str == '', None, in_str
 
 
 def parse_int(in_str: str) -> ParseResultInt:
