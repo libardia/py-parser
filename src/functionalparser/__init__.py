@@ -84,7 +84,7 @@ def optional(parser: ParserAny) -> ParserAny:
     return optional_parser
 
 
-def chain(*parsers: ParserAny, skip_none_result=True) -> ParserList:
+def chain(*parsers: ParserAny, skip_none_result: bool = False) -> ParserList:
     """Returns a new parser that executes the given parsers one after another. If any one of the inner parsers fails,
     this parser completely fails. Throws ``ValueError`` if no parsers are passed.
     :param parsers: Any number of input parsers of any type. They will be executed in the order provided in the
@@ -183,6 +183,7 @@ def fails(parser: ParserAny) -> ParserNone:
     and the entire input string.
     :param parser: The parser to be acted on.
     :returns: A parser that returns nothing, but succeeds when the input parser fails, and vice-versa."""
+
     def fails_parser(in_str: str) -> ParseResultNone:
         success, _, _ = parser(in_str)
         return not success, None, in_str
@@ -299,15 +300,8 @@ def parse_int(in_str: str) -> ParseResultInt:
      element will be ``None`` and its third element will be the entire input."""
 
     def int_transformer(parse_result: list) -> Optional[int]:
-        sign, digits = parse_result
-        collected = ''
-        if sign == '-':
-            collected += sign
-        collected += ''.join(digits)
-        try:
-            return int(collected)
-        except ValueError:
-            return None
+        size = int(''.join(parse_result[1]))
+        return -size if parse_result[0] == '-' else size
 
     int_parser = transform(
         chain(
