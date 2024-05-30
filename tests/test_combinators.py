@@ -40,7 +40,7 @@ def tp_noop(succeed: bool) -> ParserNone:
 
 class TestCombinators(TestCase):
     def test_star(self):
-        expectations: list[tuple[ParserString, str, ParseResultList]] = [
+        expectations: list[tuple[ParserAny, str, ParseResultList]] = [
             (tp_take, 'test', (True, ['t', 'e', 's', 't'], '')),
             (tp_take, 'abc', (True, ['a', 'b', 'c'], '')),
             (tp_take, 'a', (True, ['a'], '')),
@@ -54,6 +54,22 @@ class TestCombinators(TestCase):
             with self.subTest(star.__name__,
                               parser=parser, in_str=in_str, expected=expected):
                 self.assertEqual(star(parser)(in_str), expected)
+
+    def test_star_join(self):
+        expectations: list[tuple[ParserString, str, ParseResultString]] = [
+            (tp_take, 'test', (True, 'test', '')),
+            (tp_take, 'abc', (True, 'abc', '')),
+            (tp_take, 'a', (True, 'a', '')),
+            (tp_take, '', (True, '', '')),
+            (tp_get('test'), 'test hello', (True, 'test', ' hello')),
+            (tp_get('a'), 'bbb', (True, '', 'bbb')),
+            (tp_get('a'), 'aabbb', (True, 'aa', 'bbb')),
+            (tp_get('ab'), 'ababbbb', (True, 'abab', 'bbb')),
+        ]
+        for parser, in_str, expected in expectations:
+            with self.subTest(star_join.__name__,
+                              parser=parser, in_str=in_str, expected=expected):
+                self.assertEqual(star_join(parser)(in_str), expected)
 
     def test_optional(self):
         expectations: list[tuple[ParserString, str, ParseResultList]] = [
@@ -70,7 +86,7 @@ class TestCombinators(TestCase):
                 self.assertEqual(optional(parser)(in_str), expected)
 
     def test_chain(self):
-        expectations: list[tuple[list[ParserString], Optional[bool], str, ParseResultList]] = [
+        expectations: list[tuple[list[ParserAny], Optional[bool], str, ParseResultList]] = [
             ([tp_take, tp_get('test')], False, 'atestb', (True, ['a', 'test'], 'b')),
             ([tp_take, tp_get('test')], False, 'atest', (True, ['a', 'test'], '')),
             ([tp_take, tp_get('test')], False, 'ab', (False, None, 'ab')),
@@ -92,6 +108,22 @@ class TestCombinators(TestCase):
                     self.assertEqual(chain(*parsers, skip_none_result=skip_none)(in_str), expected)
         with self.subTest('when called with no args, ValueError is raised'):
             self.assertRaises(ValueError, chain)
+
+    def test_chain_join(self):
+        expectations: list[tuple[list[ParserString], str, ParseResultString]] = [
+            ([tp_take, tp_get('test')], 'atestb', (True, 'atest', 'b')),
+            ([tp_take, tp_take], 'atestb', (True, 'at', 'estb')),
+            ([tp_take, tp_take, tp_take, tp_take, tp_take], '0123456789', (True, '01234', '56789')),
+            ([tp_take, tp_get('test')], 'ab', (False, None, 'ab')),
+            ([tp_get('a'), tp_noop(True), tp_get('b')], 'abc', (True, 'ab', 'c')),
+            ([tp_get('a'), tp_noop(True), tp_get('test')], 'abc', (False, None, 'abc')),
+        ]
+        for parsers, in_str, expected in expectations:
+            with self.subTest(chain_join.__name__,
+                              parsers=parsers, in_str=in_str, expected=expected):
+                self.assertEqual(chain_join(*parsers)(in_str), expected)
+        with self.subTest('when called with no args, ValueError is raised'):
+            self.assertRaises(ValueError, chain_join)
 
     def test_transform(self):
         expectations: list[tuple[ParserAny, Callable, str, ParseResultAny]] = [

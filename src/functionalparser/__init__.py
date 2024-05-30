@@ -58,7 +58,7 @@ def star(parser: ParserAny) -> ParserList:
     **NOTE:** Because it can return zero results, the new parser is never considered to have failed.
     :param parser: The parser to be acted on.
     :returns: A new parser, whose result is a (possibly empty) list holding the same type as the result of the input
-     parser. Always returns True as the status."""
+     parser. Always returns ``True`` as the status."""
 
     def star_parser(in_str: str) -> ParseResultList:
         results = []
@@ -69,6 +69,25 @@ def star(parser: ParserAny) -> ParserList:
         return True, results, rest
 
     return star_parser
+
+
+def star_join(parser: ParserString) -> ParserString:
+    """Returns a parser that repeats the given string parser until it fails, returning a string of the results of the
+    inner parser joined together. Effectively equivalent to '*' in regex, matching zero or more.
+
+    **NOTE:** Because it can match zero results, the new parser is never considered to have failed.
+    :param parser: The parser to be acted on.
+    :returns: A new parser, whose result is a (possibly empty) string. Always returns ``True`` as the status."""
+
+    def star_join_parser(in_str: str) -> ParseResultString:
+        joined_result = ''
+        success, result, rest = parser(in_str)
+        while success:
+            joined_result += result
+            success, result, rest = parser(rest)
+        return True, joined_result, rest
+
+    return star_join_parser
 
 
 def optional(parser: ParserAny) -> ParserAny:
@@ -108,6 +127,31 @@ def chain(*parsers: ParserAny, skip_none_result: bool = False) -> ParserList:
         return True, results, rest
 
     return chain_parser
+
+
+def chain_join(*parsers: ParserString) -> ParserString:
+    """Returns a new parser that executes the given string parsers one after another, returning the results joined as a
+    single new string. If any one of the inner parsers fails, this parser completely fails. Throws ``ValueError`` if no
+    parsers are passed.
+    :param parsers: Any number of input parsers of any type. They will be executed in the order provided in the
+     arguments.
+    :returns: A new parser, whose result is a string of the results of each input parser in order joined together, or
+     ``None`` if any of the input parsers failed."""
+    if len(parsers) == 0:
+        raise ValueError(f'Must pass at least one parser to {chain_join.__name__}.')
+
+    def chain_parser_join(in_str: str) -> ParseResultString:
+        joined_result = ''
+        rest = in_str
+        for p in parsers:
+            success, result, rest = p(rest)
+            if not success:
+                return False, None, in_str
+            if result is not None:
+                joined_result += result
+        return True, joined_result, rest
+
+    return chain_parser_join
 
 
 def any_of(*parsers: ParserAny, at_least_one: bool = True):
