@@ -33,6 +33,11 @@ def tp_int(in_str: str) -> ParseResultInt:
         return False, None, in_str
 
 
+def tp_noop(succeed: bool) -> ParserNone:
+    """Defined here completely independently of the module for testing purposes."""
+    return lambda x: (succeed, None, x)
+
+
 class TestCombinators(TestCase):
     def test_star(self):
         expectations: list[tuple[ParserString, str, ParseResultList]] = [
@@ -65,20 +70,26 @@ class TestCombinators(TestCase):
                 self.assertEqual(optional(parser)(in_str), expected)
 
     def test_chain(self):
-        expectations: list[tuple[list[ParserString], str, ParseResultList]] = [
-            ([tp_take, tp_get('test')], 'atestb', (True, ['a', 'test'], 'b')),
-            ([tp_take, tp_get('test')], 'atest', (True, ['a', 'test'], '')),
-            ([tp_take, tp_get('test')], 'ab', (False, None, 'ab')),
-            ([tp_get('a'), tp_get('b'), tp_get('c')], 'abc', (True, ['a', 'b', 'c'], '')),
-            ([tp_get('a'), tp_get('b'), tp_get('c')], 'abc.', (True, ['a', 'b', 'c'], '.')),
-            ([tp_get('a'), tp_get('b'), tp_get('c')], '_bc.', (False, None, '_bc.')),
-            ([tp_get('a'), tp_get('b'), tp_get('c')], 'a_c.', (False, None, 'a_c.')),
-            ([tp_get('a'), tp_get('b'), tp_get('c')], 'ab_.', (False, None, 'ab_.')),
+        expectations: list[tuple[list[ParserString], Optional[bool], str, ParseResultList]] = [
+            ([tp_take, tp_get('test')], False, 'atestb', (True, ['a', 'test'], 'b')),
+            ([tp_take, tp_get('test')], False, 'atest', (True, ['a', 'test'], '')),
+            ([tp_take, tp_get('test')], False, 'ab', (False, None, 'ab')),
+            ([tp_get('a'), tp_get('b'), tp_get('c')], False, 'abc', (True, ['a', 'b', 'c'], '')),
+            ([tp_get('a'), tp_noop(True), tp_get('b')], True, 'abc', (True, ['a', 'b'], 'c')),
+            ([tp_get('a'), tp_noop(True), tp_get('b')], False, 'abc', (True, ['a', None, 'b'], 'c')),
+            ([tp_get('a'), tp_noop(True), tp_get('b')], None, 'abc', (True, ['a', None, 'b'], 'c')),
+            ([tp_get('a'), tp_get('b'), tp_get('c')], False, 'abc.', (True, ['a', 'b', 'c'], '.')),
+            ([tp_get('a'), tp_get('b'), tp_get('c')], False, '_bc.', (False, None, '_bc.')),
+            ([tp_get('a'), tp_get('b'), tp_get('c')], False, 'a_c.', (False, None, 'a_c.')),
+            ([tp_get('a'), tp_get('b'), tp_get('c')], False, 'ab_.', (False, None, 'ab_.')),
         ]
-        for parsers, in_str, expected in expectations:
+        for parsers, skip_none, in_str, expected in expectations:
             with self.subTest(chain.__name__,
-                              parsers=parsers, in_str=in_str, expected=expected):
-                self.assertEqual(chain(*parsers)(in_str), expected)
+                              parsers=parsers, skip_none=skip_none, in_str=in_str, expected=expected):
+                if skip_none is None:
+                    self.assertEqual(chain(*parsers)(in_str), expected)
+                else:
+                    self.assertEqual(chain(*parsers, skip_none_result=skip_none)(in_str), expected)
         with self.subTest('when called with no args, ValueError is raised'):
             self.assertRaises(ValueError, chain)
 
@@ -163,3 +174,16 @@ class TestCombinators(TestCase):
         for at_least_one in (True, False):
             with self.subTest(f'when called with no parsers and at_least_one={at_least_one}, ValueError is raised'):
                 self.assertRaises(ValueError, any_of, at_least_one=at_least_one)
+
+    def test_fails(self):
+        expectations: list[tuple[ParserAny, str, bool]] = [
+            (tp_take, '', True),
+            (tp_take, 'g', False),
+            (tp_take, 'ggh', False),
+            (tp_int, '5', False),
+            (tp_int, 'guh', True),
+        ]
+        for parser, in_str, expected in expectations:
+            with self.subTest(fails.__name__,
+                              parser=parser, in_str=in_str, expected=expected):
+                self.assertEqual(fails(parser)(in_str), (expected, None, in_str))

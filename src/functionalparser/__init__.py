@@ -292,6 +292,13 @@ def eof(in_str: str) -> ParseResultNone:
     return in_str == '', None, in_str
 
 
+def noop(in_str: str) -> ParseResultNone:
+    """Does nothing, but succeeds.
+    :param in_str: The input string being parsed.
+    :returns: A tuple of: ``True``, ``None``, ``in_str``"""
+    return True, None, in_str
+
+
 def parse_int(in_str: str) -> ParseResultInt:
     """Parses an integer from the beginning of the input.
     :param in_str: The input string being parsed.
@@ -305,7 +312,8 @@ def parse_int(in_str: str) -> ParseResultInt:
 
     int_parser = transform(
         chain(
-            optional(get('-')), star(digit)
+            any_of(get('-'), get('+'), at_least_one=False),
+            star(digit)
         ),
         int_transformer
     )

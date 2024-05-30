@@ -46,6 +46,17 @@ class TestParsers(TestCase):
                               in_str=in_str, expected=expected):
                 self.assertEqual(all_whitespace(in_str), expected)
 
+    def test_eof(self):
+        expectations: list[tuple[str, ParseResultString]] = [
+            ('', (True, None, '')),
+            ('?', (False, None, '?')),
+            ('test', (False, None, 'test')),
+        ]
+        for in_str, expected in expectations:
+            with self.subTest(eof.__name__,
+                              in_str=in_str, expected=expected):
+                self.assertEqual(eof(in_str), expected)
+
     def test_parse_int(self):
         expectations: list[tuple[str, ParseResultInt]] = [
             ('0', (True, 0, '')),
@@ -58,6 +69,12 @@ class TestParsers(TestCase):
             ('0005', (True, 5, '')),
             ('0001505', (True, 1505, '')),
             ('-00978', (True, -978, '')),
+            ('eight', (False, None, 'eight')),
+            ('+5', (True, 5, '')),
+            ('+05', (True, 5, '')),
+            ('huh?', (False, None, 'huh?')),
+            ('', (False, None, '')),
+            (' 10', (False, None, ' 10')),
         ]
         for in_str, expected in expectations:
             with self.subTest(parse_int.__name__,
