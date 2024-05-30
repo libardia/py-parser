@@ -349,16 +349,11 @@ def parse_int(in_str: str) -> ParseResultInt:
     :returns: A tuple whose first element is a boolean representing if the parser succeeded, the second element is the
      result of the parser, and the third element is the remaining unparsed input. If this parser fails, its second
      element will be ``None`` and its third element will be the entire input."""
-
-    def int_transformer(parse_result: list) -> Optional[int]:
-        size = int(''.join(parse_result[1]))
-        return -size if parse_result[0] == '-' else size
-
     int_parser = transform(
-        chain(
+        chain_join(
             any_of(get('-'), get('+'), at_least_one=False),
-            star(digit)
+            star_join(digit)
         ),
-        int_transformer
+        int
     )
     return int_parser(in_str)
